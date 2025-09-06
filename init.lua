@@ -84,6 +84,10 @@ I hope you enjoy your Neovim journey,
 P.S. You can delete this when you're done too. It's your config now! :)
 --]]
 
+vim.opt.tabstop = 2 -- nombre d'espaces pour une tabulation
+vim.opt.shiftwidth = 2 -- nombre d'espaces pour l'indentation automatique
+vim.opt.expandtab = true -- utilise des espaces au lieu de vraies tabulations
+
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -671,30 +675,16 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        -- clangd = {},
-        -- gopls = {},
-        -- pyright = {},
-        -- rust_analyzer = {},
-        -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-        --
-        -- Some languages (like typescript) have entire language plugins that can be useful:
-        --    https://github.com/pmizio/typescript-tools.nvim
-        --
-        -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
-        --
-
+        clangd = {}, -- C / C++
+        -- pyright = {}, -- Python
+        jdtls = {}, -- Java
+        omnisharp = {}, -- C#
         lua_ls = {
-          -- cmd = { ... },
-          -- filetypes = { ... },
-          -- capabilities = {},
           settings = {
             Lua = {
               completion = {
                 callSnippet = 'Replace',
               },
-              -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-              -- diagnostics = { disable = { 'missing-fields' } },
             },
           },
         },
@@ -768,11 +758,11 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
-        --
-        -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        c = { 'clang-format' },
+        cpp = { 'clang-format' },
+        python = { 'black', 'isort' },
+        -- java = { 'google-java-format' }, -- necessite installation manuelle (flemme)
+        -- cs = { 'csharpier' }, -- formatteur C#, npm (flemme)
       },
     },
   },
@@ -835,7 +825,24 @@ require('lazy').setup({
         -- <c-k>: Toggle signature help
         --
         -- See :h blink-cmp-config-keymap for defining your own keymap
-        preset = 'default',
+        preset = 'none', -- Désactive le preset par défaut
+
+        ['<C-space>'] = { 'show', 'show_documentation', 'hide_documentation' },
+        ['<C-e>'] = { 'hide' },
+        ['<CR>'] = { 'accept', 'fallback' },
+
+        ['<Up>'] = { 'select_prev', 'fallback' },
+        ['<Down>'] = { 'select_next', 'fallback' },
+        ['<C-p>'] = { 'select_prev', 'fallback_to_mappings' },
+        ['<C-n>'] = { 'select_next', 'fallback_to_mappings' },
+
+        ['<C-b>'] = { 'scroll_documentation_up', 'fallback' },
+        ['<C-f>'] = { 'scroll_documentation_down', 'fallback' },
+
+        ['<Tab>'] = { 'select_next', 'fallback' }, -- Sélectionne l'élément suivant
+        ['<S-Tab>'] = { 'select_prev', 'fallback' }, -- Sélectionne l'élément précédent
+
+        ['<C-k>'] = { 'show_signature', 'hide_signature', 'fallback' },
 
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
@@ -875,26 +882,35 @@ require('lazy').setup({
       signature = { enabled = true },
     },
   },
-
-  { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
-    priority = 1000, -- Make sure to load this before all the other start plugins.
+  { -- Configuration pour Catppuccin
+    'catppuccin/nvim',
+    name = 'catppuccin',
+    priority = 1000, -- Assurez-vous de le charger avant les autres plugins
     config = function()
-      ---@diagnostic disable-next-line: missing-fields
-      require('tokyonight').setup {
-        styles = {
-          comments = { italic = false }, -- Disable italics in comments
-        },
+      require('catppuccin').setup {
+        flavour = 'mocha', -- Choisissez le goût "mocha"
       }
 
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      -- Chargez le thème ici
+      vim.cmd.colorscheme 'catppuccin'
+    end,
+  },
+
+  { -- Configuration pour Telescope
+    'nvim-telescope/telescope.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    config = function()
+      require('telescope').setup {
+        defaults = {
+          -- Autres options de configuration de Telescope
+          layout_config = {
+            horizontal = { mirror = false },
+            vertical = { mirror = false },
+          },
+          -- Utiliser le thème Catppuccin
+          theme = 'catppuccin',
+        },
+      }
     end,
   },
 
