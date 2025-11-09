@@ -677,7 +677,18 @@ require('lazy').setup({
       local servers = {
         clangd = {}, -- C / C++
         -- pyright = {}, -- Python
-        jdtls = {}, -- Java
+        jdtls = {
+          cmd = { 'jdtls' },
+          filetypes = { 'java' },
+          root_dir = require('lspconfig.util').root_pattern('.git', 'pom.xml', 'build.gradle'),
+          settings = {
+            java = {
+              format = {
+                enabled = true,
+              },
+            },
+          },
+        },
         omnisharp = {}, -- C#
         lua_ls = {
           settings = {
@@ -761,7 +772,7 @@ require('lazy').setup({
         c = { 'clang-format' },
         cpp = { 'clang-format' },
         python = { 'black', 'isort' },
-        -- java = { 'google-java-format' }, -- necessite installation manuelle (flemme)
+        java = { 'google-java-format' },
         -- cs = { 'csharpier' }, -- formatteur C#, npm (flemme)
       },
     },
@@ -1030,3 +1041,110 @@ require('lazy').setup({
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
+
+require('lspconfig').tinymist.setup {
+  cmd = { 'tinymist' },
+  filetypes = { 'typst' },
+  root_dir = require('lspconfig').util.root_pattern('.git', 'typst.toml'),
+}
+
+-- Variables de suivi
+local zathura_job = nil
+local pdf_path = nil
+
+local function get_main_file()
+  local cwd = vim.fn.getcwd()
+  local toml = cwd .. '/typst.toml'
+
+  if vim.fn.filereadable(toml) == 1 then
+    -- On cherche une ligne `main = ...` dans le toml
+    local main = vim.fn.trim(vim.fn.system('grep "^main" "' .. toml .. '" | cut -d= -f2 | tr -d \'"\''))
+    if main ~= '' then
+      return cwd .. '/' .. main
+    end
+  end
+
+  -- Sinon, on utilise le fichier ouvert
+  return vim.fn.expand '%:p'
+end
+
+-- ----------------------------------------------------------------------
+-- Compilation + ouverture de Zathura
+-- ----------------------------------------------------------------------
+local function compile_and_open()
+  local src = get_main_file()
+  if vim.fn.filereadable(src) ~= 1 then
+    return
+  end
+
+  pdf_path = src:gsub('%.typ$', '.pdf')
+  local cmd = string.format('typst compile "%s" "%s" > /dev/null 2>&1', src, pdf_path)
+
+  if os.execute(cmd) == 0 and vim.fn.filereadable(pdf_path) == 1 then
+    if not zathura_job then
+      zathura_job = vim.fn.jobstart({ 'zathura', pdf_path }, { detach = true })
+    end
+  else
+    vim.notify('Compilation Typst échouée : ' .. src, vim.log.levels.ERROR)
+  end
+end
+
+-- ----------------------------------------------------------------------
+-- Recompilation
+-- ----------------------------------------------------------------------
+local function recompile()
+  local src = get_main_file()
+  if vim.fn.filereadable(src) ~= 1 then
+    return
+  end
+
+  pdf_path = src:gsub('%.typ$', '.pdf')
+  local cmd = string.format('typst compile "%s" "%s" > /dev/null 2>&1', src, pdf_path)
+
+  if os.execute(cmd) ~= 0 then
+    vim.notify('Recompilation échouée : ' .. src, vim.log.levels.ERROR)
+  end
+end
+
+-- ----------------------------------------------------------------------
+-- Nettoyage
+-- ----------------------------------------------------------------------
+local function close_zathura()
+  if zathura_job then
+    vim.fn.jobstop(zathura_job)
+    zathura_job = nil
+  end
+  if pdf_path and vim.fn.filereadable(pdf_path) == 1 then
+    os.remove(pdf_path)
+    pdf_path = nil
+  end
+end
+
+-- ----------------------------------------------------------------------
+-- Autocommandes
+-- ----------------------------------------------------------------------
+vim.api.nvim_create_augroup('TypstAuto', { clear = true })
+
+vim.api.nvim_create_autocmd('BufWinEnter', {
+  pattern = '*.typ',
+  callback = compile_and_open,
+  group = 'TypstAuto',
+})
+
+vim.api.nvim_create_autocmd('BufWritePost', {
+  pattern = '*.typ',
+  callback = recompile,
+  group = 'TypstAuto',
+})
+
+vim.api.nvim_create_autocmd('BufDelete', {
+  pattern = '*.typ',
+  callback = close_zathura,
+  group = 'TypstAuto',
+})
+
+vim.api.nvim_create_autocmd('VimLeavePre', {
+  pattern = '*',
+  callback = close_zathura,
+  group = 'TypstAuto',
+})
