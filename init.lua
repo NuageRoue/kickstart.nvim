@@ -677,7 +677,7 @@ require('lazy').setup({
       local servers = {
         clangd = {}, -- C / C++
         -- pyright = {}, -- Python
-        jdtls = {
+        --[[jdtls = {
           cmd = { 'jdtls' },
           filetypes = { 'java' },
           root_dir = require('lspconfig.util').root_pattern('.git', 'pom.xml', 'build.gradle'),
@@ -689,6 +689,8 @@ require('lazy').setup({
             },
           },
         },
+        ]]
+        --
         omnisharp = {}, -- C#
         lua_ls = {
           settings = {
@@ -1041,12 +1043,6 @@ require('lazy').setup({
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
-
-require('lspconfig').tinymist.setup {
-  cmd = { 'tinymist' },
-  filetypes = { 'typst' },
-  root_dir = require('lspconfig').util.root_pattern('.git', 'typst.toml'),
-}
 
 -- Variables de suivi
 local zathura_job = nil
